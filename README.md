@@ -27,9 +27,9 @@ Store that as a string and pass it into the init_admob_ function
 
 
 ###Function prototype
-####init_admob_test("banner pub id", "interstitial pub id", "isTop")
-####init_admob_interstitial_test("interstitial pub id", "isTop")
-####init_admob_banner_test("banner pub id", "isTop")
+####init_admob_test(get_instance_ID(), "banner pub id", "interstitial pub id", "isTop")
+####init_admob_interstitial_test(get_instance_ID(), "interstitial pub id", "isTop")
+####init_admob_banner_test(get_instance_ID(), "banner pub id", "isTop")
 
 Replace _test with _real after you've successfully tested the ads. Do not test with live ads because clicking your own ads **even by accident** can cause you to lose your admob account.
 
@@ -52,11 +52,17 @@ Remember that you should only call the init function **once**.
 
 ##Main Functions Overview
 
-#####admob.init_admob_test("banner pub id", "interstitial pub id", "isTop")
-#####admob.init_admob_real("banner pub id", "interstitial pub id", "isTop")
+#####admob.init_admob_test(get_instance_ID(), "banner pub id", "interstitial pub id", "isTop")
+#####admob.init_admob_real(get_instance_ID(), "banner pub id", "interstitial pub id", "isTop")
 ####admob.show_banner()
 ####admob.hide_banner()
 ####admob.show_interstitial()
+
+
+##Callbacks
+
+#####_on_interstitial_closed()
+#####_on_banner_loaded()
 
 
 If you for any reason would just like to show either interstitial ads or banner ads then call one of these sets of functions below.
@@ -64,10 +70,10 @@ If you for any reason would just like to show either interstitial ads or banner 
 
 
 ###Additional Functions
-#####admob.init_admob_interstitial_test("interstitial pub id", "isTop")
-#####init_admob_interstitial_real("interstitial pub id", "isTop")
-#####init_admob_banner_test("banner pub id", "isTop")
-#####init_admob_banner_real("banner pub id", "isTop")
+#####admob.init_admob_interstitial_test(get_instance_ID(), "interstitial pub id", "isTop")
+#####init_admob_interstitial_real(get_instance_ID(), "interstitial pub id", "isTop")
+#####init_admob_banner_test(get_instance_ID(), "banner pub id", "isTop")
+#####init_admob_banner_real(get_instance_ID(), "banner pub id", "isTop")
 
 
 Be sure to always test your ads with the **init_admob_test** functions, Google will band your admob account if you test with real ads. To be sure check the [admob guidelines](https://support.google.com/admob/answer/2753860?hl=en)

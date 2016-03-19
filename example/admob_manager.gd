@@ -12,7 +12,7 @@ func _init():
 		#You can call admob.init_admob_test or admob.init_admob_real
 		#If the second argument is true, the banner ad will be at the top of the screen
 		#Function prototype init_admob_test(final String app_id, boolean isTop)
-		admob.init_admob_test(admob_app_id, true)
+		admob.init_admob_test(get_instance_ID(), admob_app_id, true)
 #	connect("pressed", self, "_on_Show_Banner_Button_pressed")
 	
 func _ready():

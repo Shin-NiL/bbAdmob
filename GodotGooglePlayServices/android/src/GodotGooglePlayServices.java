@@ -1,4 +1,4 @@
-package com.android.godot;
+package org.godotengine.godot;
 
 import android.util.Log;
 import android.view.View;
@@ -29,15 +29,15 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
     private boolean             isInterstitialDisabled = false;
     private boolean             wasShowingBanner = false;
     private boolean             isBannerReady = false;
-    private boolean             isinterstitialReady = false;
+    private boolean             isInterstitialLoaded = false;
     private boolean             isDebug = true;
     private boolean             isFirstRun = true;
     private boolean             isTest;
 
     private String              m_banner_id;
     private String              m_interstitial_id;
-    private int                 m_device_id;
 
+    private int instanceId = 0;
 
     static public Godot.SingletonBase initialize(Activity p_activity) { return new GodotGooglePlayServices(p_activity); } 
 
@@ -46,7 +46,8 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
           registerClass("bbAdmob", new String[]{"init_admob_test","init_admob_real",
                                                 "init_admob_banner_test","init_admob_banner_real",
                                                 "show_banner","hide_banner","show_interstitial",
-                                                "init_admob_interstitial_test", "init_admob_interstitial_real","get_instance_id"});
+                                                "init_admob_interstitial_test", "init_admob_interstitial_real","get_instance_id",
+                                                "is_interstitial_loaded" , "loadInterstitial"});
           m_activity = p_activity;
     }
 
@@ -78,7 +79,7 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
 
         }
         catch(NoSuchAlgorithmException e) {
-            Log.w("--------- godot ----------", "failed to get android DEVICE ID from Java");
+            Log.w("godot", "failed to get android DEVICE ID from Java");
         }
         return "";
     }
@@ -108,27 +109,27 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
                         m_adview.pause();
                         isShowingBanner = false;
                         if(isDebug) {
-                            Log.d("--------- godot ----------", "admob banner paused");   
+                            Log.d("godot", "admob banner paused");   
                         }
                     } else {
                         m_adview.setVisibility(View.VISIBLE);
                         m_adview.resume();
                         isShowingBanner = true;
                         if(isDebug){
-                            Log.d("--------- godot ----------", "admob banner resumed");
+                            Log.d("godot", "admob banner resumed");
                         }
                     }
                 }
             });
         } else {
-            Log.w("--------- godot ----------", "Trying to show banner ad before it's ready");
+            Log.w("godot", "Trying to show banner ad before it's ready");
             return;
         }
     }
 
     private void prepare_banner_ads() {
         if(isDebug) {
-            Log.d("--------- godot ----------", "banner preparing to show ads");
+            Log.d("godot", "banner preparing to show ads");
         }
         m_adview = new AdView(m_activity);
         m_adview.setAdUnitId(m_banner_id);
@@ -139,8 +140,9 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
         m_adview.setAdListener(new AdListener() {
             @Override public void onAdLoaded(){
                 isBannerReady = true;
+                GodotLib.calldeferred(instanceId, "_on_banner_loaded", new Object[]{});
                 if(isDebug){
-                    Log.d("--------- godot ----------", "banner ad listener loaded an ad: ");
+                    Log.d("godot", "banner ad listener loaded an ad: ");
                 }
                 
             }
@@ -166,7 +168,7 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
                         err = "banner ad failed to load due to unknown error code";
                         break;
                 }
-                Log.w("--------- godot ----------", log + err); 
+                Log.w("godot", log + err); 
             }
         });
         m_banner_adrequest = get_ads();
@@ -175,15 +177,15 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
 
     private void prepare_interstitial_ads() {
         if(isDebug) {
-            Log.d("--------- godot ----------", "m_interstitial preparing to show ads");
+            Log.d("godot", "m_interstitial preparing to show ads");
         }
         m_interstitial = new InterstitialAd(m_activity);
         m_interstitial.setAdUnitId(m_interstitial_id);
         m_interstitial.setAdListener(new AdListener(){
             @Override 
             public void onAdLoaded(){
-                    isinterstitialReady = true;
-                    Log.d("--------- godot ----------", "m_interstitial ad listener loaded an ad: ");
+                    isInterstitialLoaded = true;
+                    Log.d("godot", "m_interstitial ad listener loaded an ad: ");
                 }
                 @Override 
                 public void onAdFailedToLoad(int errorCode) {
@@ -208,24 +210,34 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
                             err = "m_interstitial failed to load an ad because of unknown error code";
                             break;
                     }
-                    Log.w("--------- godot ----------", log + err);
+                    Log.w("godot", log + err);
                 }
                 @Override
                 public void onAdClosed(){
                     isShowingInterstitial = false;
-                    m_interstitial_adrequest = get_ads();
-                    m_interstitial.loadAd(m_interstitial_adrequest);
+					loadInterstitial();
+                    GodotLib.calldeferred(instanceId, "_on_interstitial_closed", new Object[]{});
                 }
         });
-                    m_interstitial_adrequest = get_ads();
-                    m_interstitial.loadAd(m_interstitial_adrequest);
+		loadInterstitial();
     }
+    
+    public void loadInterstitial() {
+		m_activity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				isInterstitialLoaded = false;
+				m_interstitial_adrequest = get_ads();
+				m_interstitial.loadAd(m_interstitial_adrequest);
+			}
+		}); 
+	}
 
     private AdRequest get_ads() {
         AdRequest ad;
         if(isTest) {
             if(isDebug) {
-                Log.d("--------- godot ----------", "requesting to get test ads");
+                Log.d("godot", "requesting to get test ads");
             }
 
             ad = new AdRequest.Builder()
@@ -235,7 +247,7 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
 
         } else {
             if(isDebug) {
-                Log.d("--------- godot ----------", "requesting to get real ads");
+                Log.d("godot", "requesting to get real ads");
             }
 
             ad = new AdRequest.Builder().build();
@@ -243,14 +255,15 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
         return ad;
     }
 
-    private void init(String banner_id, String interstitial_id, boolean isTop, boolean isTesting, boolean isDebuging) {
+    private void init(final int new_instanceId, String banner_id, String interstitial_id, boolean isTop, boolean isTesting, boolean isDebuging) {
         isDebug = isDebuging;
         isBannerOnTop = isTop;
         isTest = isTesting;
+        instanceId = new_instanceId;
 
         if(banner_id == null) {
             isBannerDisabled = true;
-            Log.d("--------- godot ----------", "Failed to provide a banner id, cannot request banner ads");
+            Log.d("godot", "Failed to provide a banner id, cannot request banner ads");
             banner_id = "";
         } else if (banner_id.length() <= 0) {
             isBannerDisabled = true;
@@ -261,7 +274,7 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
         if(interstitial_id == null ) {
             isInterstitialDisabled = true;
             interstitial_id = "";
-            Log.d("--------- godot ----------", "Failed to provide a interstitial id, cannot request interstitial ads");
+            Log.d("godot", "Failed to provide a interstitial id, cannot request interstitial ads");
             return;
         } else if (interstitial_id.length() <= 0) {
             isInterstitialDisabled = true;
@@ -278,107 +291,107 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
     }
 
 
-    public void init_admob_test(String banner_id, String interstitial_id, boolean isTop) {
+    public void init_admob_test(final int new_instanceId, String banner_id, String interstitial_id, boolean isTop) {
         if(isFirstRun) {
-            init(banner_id, interstitial_id, isTop, true, true);
+            init(new_instanceId, banner_id, interstitial_id, isTop, true, true);
             m_activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     init_both();
-                    Log.w("--------- godot ----------", "initing both in test mode");
+                    Log.w("godot", "initing both in test mode");
                 }
             });  
         } else {
-            Log.w("--------- godot ----------", "trying to init admob twice, should only be called once");
+            Log.w("godot", "trying to init admob twice, should only be called once");
             return;
         }
     }
 
-    public void init_admob_real(String banner_id, String interstitial_id, boolean isTop) {
+    public void init_admob_real(final int new_instanceId, String banner_id, String interstitial_id, boolean isTop) {
         if(isFirstRun) {
-            init(banner_id, interstitial_id, isTop, false, false);
+            init(new_instanceId, banner_id, interstitial_id, isTop, false, false);
             m_activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     init_both();
-                    Log.w("--------- godot ----------", "initing both in real mode");
+                    Log.w("godot", "initing both in real mode");
                 }
             });  
         } else {
             
-            Log.w("--------- godot ----------", "trying to init admob twice, should only be called once");
+            Log.w("godot", "trying to init admob twice, should only be called once");
             return;
         }
     }
 
-    public void init_admob_banner_test(String banner_id, boolean isTop) {
+    public void init_admob_banner_test(final int new_instanceId, String banner_id, boolean isTop) {
         if(isFirstRun) {
-            init(banner_id, null , isTop, true, true);
+            init(new_instanceId, banner_id, null , isTop, true, true);
             m_activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     isInterstitialDisabled = true;
                     prepare_banner_ads();
-                    Log.w("--------- godot ----------", "initing banner in test mode");
+                    Log.w("godot", "initing banner in test mode");
                 }
             });  
         } else {
             
-            Log.w("--------- godot ----------", "trying to init admob twice, should only be called once");
+            Log.w("godot", "trying to init admob twice, should only be called once");
             return;
         }
     }
 
-    public void init_admob_banner_real(String banner_id, boolean isTop) {
+    public void init_admob_banner_real(final int new_instanceId, String banner_id, boolean isTop) {
         if(isFirstRun) {
-            init(banner_id, null , isTop, false, false);
+            init(new_instanceId, banner_id, null , isTop, false, false);
             m_activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     isInterstitialDisabled = true;
                     prepare_banner_ads();
-                    Log.w("--------- godot ----------", "initing banner in real mode");
+                    Log.w("godot", "initing banner in real mode");
                 }
             });  
         } else {
             
-            Log.w("--------- godot ----------", "trying to init admob twice, should only be called once");
+            Log.w("godot", "trying to init admob twice, should only be called once");
             return;
         }
     }
 
-    public void init_admob_interstitial_test(String interstitial_id, boolean isTop) {
+    public void init_admob_interstitial_test(final int new_instanceId, String interstitial_id, boolean isTop) {
         if(isFirstRun) {
-            init(null, interstitial_id , isTop, true, true);
+            init(new_instanceId, null, interstitial_id , isTop, true, true);
             m_activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     isBannerDisabled = true;
                     prepare_interstitial_ads();
-                    Log.w("--------- godot ----------", "initing interstitial in test mode");
+                    Log.w("godot", "initing interstitial in test mode");
                 }
             });  
         } else {
             
-            Log.w("--------- godot ----------", "trying to init admob twice, should only be called once");
+            Log.w("godot", "trying to init admob twice, should only be called once");
             return;
         }
     }
 
-    public void init_admob_interstitial_real(String interstitial_id, boolean isTop) {
+    public void init_admob_interstitial_real(final int new_instanceId, String interstitial_id, boolean isTop) {
         if(isFirstRun) {
-            init(null, interstitial_id , isTop, false, false);
+            init(new_instanceId, null, interstitial_id , isTop, false, false);
             m_activity.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     isBannerDisabled = true;
                     prepare_interstitial_ads();
-                    Log.w("--------- godot ----------", "initing interstitial in real mode");
+                    Log.w("godot", "initing interstitial in real mode");
                 }
             });  
         } else {
             
-            Log.w("--------- godot ----------", "trying to init admob twice, should only be called once");
+            Log.w("godot", "trying to init admob twice, should only be called once");
             return;
         }
     }
@@ -391,7 +404,7 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
                 banner();
             }
         } else {
-            Log.w("--------- godot ----------", "cannot show or hide banner ads after init_admob_banner_");
+            Log.w("godot", "cannot show or hide banner ads after init_admob_banner_");
             return;
         }
     }
@@ -404,7 +417,7 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
                 banner();
             }
         } else {
-            Log.w("--------- godot ----------", "cannot show or hide ads after init_admob_banner_");
+            Log.w("godot", "cannot show or hide ads after init_admob_banner_");
             return;
         }
 
@@ -419,17 +432,17 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
                         m_interstitial.show();
                         isShowingInterstitial = true;
                         if(isDebug) {
-                            Log.d("--------- godot ----------", "m_interstitial_adrequest loaded and your request an ad to be shown");
+                            Log.d("godot", "m_interstitial_adrequest loaded and your request an ad to be shown");
                         }
                     } else {
                         if(isDebug) {
-                            Log.d("--------- godot ----------", "you tried to show m_interstitial_adrequest but an ad isn't loaded yet");
+                            Log.d("godot", "you tried to show m_interstitial_adrequest but an ad isn't loaded yet");
                         }
                     }
                 }
             });
         } else {
-            Log.w("--------- godot ----------", "cannot use interstitial ads after init_admob_interstitial_");
+            Log.w("godot", "cannot use interstitial ads after init_admob_interstitial_");
             return;
         }
     }
@@ -451,10 +464,9 @@ public class GodotGooglePlayServices extends Godot.SingletonBase {
         }
     }
 
-    public void get_instance_id(int id) {
 
-        m_device_id = id;
+    public boolean is_interstitial_loaded() {
+        return isInterstitialLoaded;
     }
-    
 // http://stackoverflow.com/questions/3934331/android-how-to-encrypt-a-string
 }

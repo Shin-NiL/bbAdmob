@@ -1,7 +1,10 @@
 def can_build(plat):
-    return plat == 'android'
+	return plat=="android"
 
 def configure(env):
-    if env['platform'] == 'android':
-        env.android_module_file("GodotGooglePlayServices.java")
-        env.android_module_manifest("AndroidManifestChunk.xml")
+	if (env['platform'] == 'android'):
+		env.android_add_dependency("compile 'com.google.android.gms:play-services-ads:+'")
+		env.android_add_to_manifest("android/AndroidManifestChunk.xml")
+		env.android_add_java_dir("android/src/")
+		env.disable_module()
+
